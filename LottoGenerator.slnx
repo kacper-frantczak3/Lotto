@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="LottoGenerator.Api/LottoGenerator.Api.csproj" />
+  <Project Path="LottoGenerator.Tests/LottoGenerator.Tests.csproj" />
+</Solution>

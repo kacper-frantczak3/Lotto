@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generator Liczb Lotto</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-white text-neutral-900 min-h-screen flex flex-col justify-between selection:bg-neutral-200">
+
+    <main class="max-w-md mx-w-md mx-auto w-full px-6 py-10 flex flex-col items-center flex-grow justify-center">
+        <div class="w-full space-y-5">
+            <header class="text-center">
+                <h1 class="text-2xl font-semibold tracking-tight text-neutral-900">
+                    Lotto Generator
+                </h1>
+                <p class="text-neutral-500 text-xs mt-1">Minimalistyczne API oraz bezpieczny generator losowy.</p>
+            </header>
+
+            <div class="space-y-3 bg-neutral-50 border border-neutral-200 p-5 rounded-2xl shadow-xs">
+                <div>
+                    <label class="block text-xs font-medium text-neutral-500 uppercase tracking-wider mb-1">Wybierz grę</label>
+                    <select id="gameType" class="w-full bg-white border border-neutral-300 rounded-lg px-3 py-2 text-neutral-800 text-sm focus:outline-none focus:border-neutral-900 transition-colors">
+                        <option value="lotto">Lotto (6 z 49)</option>
+                        <option value="mini">Mini Lotto (5 z 42)</option>
+                        <option value="eurojackpot">Eurojackpot (5 z 50)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-neutral-500 uppercase tracking-wider mb-1">Liczba kuponów (1-10)</label>
+                    <input type="number" id="linesCount" min="1" max="10" value="1" 
+                        class="w-full bg-white border border-neutral-300 rounded-lg px-3 py-2 text-neutral-800 text-sm focus:outline-none focus:border-neutral-900 transition-colors">
+                </div>
+
+                <button onclick="generateNumbers()" 
+                    class="w-full bg-neutral-900 hover:bg-neutral-800 text-white font-medium text-sm py-2.5 rounded-lg transition-colors cursor-pointer">
+                    Generuj liczby
+                </button>
+            </div>
+
+            <div id="resultsContainer" class="space-y-2 hidden">
+                <h2 class="text-xs font-medium text-neutral-500 uppercase tracking-wider">Wyniki losowania</h2>
+                <div id="linesList" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+            </div>
+
+            <div class="space-y-2 pt-3 border-t border-neutral-200">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xs font-medium text-neutral-500 uppercase tracking-wider">Historia losów</h2>
+                    <div class="space-x-3 text-xs">
+                        <button onclick="clearHistory()" class="text-red-600 hover:underline cursor-pointer">Wyczyść</button>
+                        <button onclick="loadHistory()" class="text-neutral-600 hover:underline cursor-pointer">Odśwież</button>
+                    </div>
+                </div>
+                <div id="historyList" class="space-y-2 max-h-36 overflow-y-auto pr-1"></div>
+            </div>
+
+            <div id="errorContainer" class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs hidden"></div>
+        </div>
+    </main>
+
+    <footer class="w-full py-4 text-center text-xs text-neutral-400 border-t border-neutral-100 bg-white">
+        Stworzone przez <a href="https://github.com/kacper-frantczak3/" target="_blank" class="text-neutral-700 font-medium hover:underline">Kacpra Frantczaka</a>
+    </footer>
+
+    <script>
+        async function generateNumbers() {
+            const gameType = document.getElementById('gameType').value;
+            const linesCount = parseInt(document.getElementById('linesCount').value);
+            
+            const resultsContainer = document.getElementById('resultsContainer');
+            const linesList = document.getElementById('linesList');
+            const errorContainer = document.getElementById('errorContainer');
+
+            resultsContainer.classList.add('hidden');
+            errorContainer.classList.add('hidden');
+            linesList.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/lotto/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ gameType, linesCount })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.detail || 'Wystąpił błąd żądania.');
+                }
+
+                const data = await response.json();
+                
+                data.generatedLines.forEach((line, index) => {
+                    const lineDiv = document.createElement('div');
+                    lineDiv.className = 'flex items-center gap-2 bg-neutral-50 border border-neutral-200 p-2 rounded-xl overflow-x-auto';
+                    
+                    const label = document.createElement('span');
+                    label.className = 'text-xs font-semibold text-neutral-400 mr-2 shrink-0';
+                    label.textContent = `#${index + 1}`;
+                    lineDiv.appendChild(label);
+
+                    line.forEach(num => {
+                        const ball = document.createElement('div');
+                        ball.className = 'w-8 h-8 rounded-full bg-amber-300 border border-amber-400 flex items-center justify-center font-bold text-neutral-900 text-xs shadow-2xs shrink-0';
+                        ball.textContent = String(num).padStart(2, '0');
+                        lineDiv.appendChild(ball);
+                    });
+
+                    linesList.appendChild(lineDiv);
+                });
+
+                resultsContainer.classList.remove('hidden');
+                loadHistory();
+
+            } catch (err) {
+                errorContainer.textContent = err.message;
+                errorContainer.classList.remove('hidden');
+            }
+        }
+
+        async function loadHistory() {
+            const historyList = document.getElementById('historyList');
+            try {
+                const response = await fetch('/api/lotto/history');
+                if (!response.ok) return;
+                
+                const history = await response.json();
+                historyList.innerHTML = '';
+
+                if (history.length === 0) {
+                    historyList.innerHTML = '<p class="text-xs text-neutral-400">Brak zapisanych kuponów.</p>';
+                    return;
+                }
+
+                history.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-neutral-50 border border-neutral-200 p-2 rounded-lg text-xs space-y-1';
+                    
+                    const header = document.createElement('div');
+                    header.className = 'flex justify-between text-neutral-500 font-medium';
+                    header.innerHTML = `<span class="uppercase text-neutral-900 font-semibold">${item.gameType}</span> <span>${new Date(item.generatedAt).toLocaleTimeString()}</span>`;
+                    card.appendChild(header);
+
+                    item.lines.forEach((line, idx) => {
+                        const lineRow = document.createElement('div');
+                        lineRow.className = 'text-neutral-700 font-mono tracking-wider';
+                        lineRow.textContent = `[${idx + 1}] ${line.join(', ')}`;
+                        card.appendChild(lineRow);
+                    });
+
+                    historyList.appendChild(card);
+                });
+            } catch (e) {
+                console.error('Błąd pobierania historii', e);
+            }
+        }
+
+        async function clearHistory() {
+            if (!confirm('Czy na pewno chcesz wyczyścić historię?')) return;
+            try {
+                const response = await fetch('/api/lotto/history', { method: 'DELETE' });
+                if (response.ok) {
+                    loadHistory();
+                }
+            } catch (e) {
+                console.error('Błąd czyszczenia historii', e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadHistory);
+    </script>
+</body>
+</html>
