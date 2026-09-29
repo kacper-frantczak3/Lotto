@@ -28,8 +28,12 @@ A modern, secure, and production-ready Web API built with **.NET** (Minimal API)
 git clone [https://github.com/kacper-frantczak3/LottoGenerator.git](https://github.com/kacper-frantczak3/LottoGenerator.git)
 cd LottoGenerator/LottoGenerator.Api
 
+---
+
 ### 2. Run the Application
 `dotnet run`
+
+---
 
 ### 3. Run Unit Tests
 Open a separate terminal in the root folder and run:
